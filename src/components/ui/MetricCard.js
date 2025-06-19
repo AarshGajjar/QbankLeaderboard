@@ -1,7 +1,0 @@
-import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-import { cn } from "@/lib/utils";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, } from "@/components/ui/tooltip";
-const MetricCard = ({ title, value, valueUnit, icon, tooltip, iconColor, }) => {
-    return (_jsx(TooltipProvider, { children: _jsxs(Tooltip, { children: [_jsx(TooltipTrigger, { asChild: true, children: _jsxs("div", { className: "relative p-6 border rounded-xl bg-card text-card-foreground shadow-sm hover:shadow-md transition-shadow duration-200", children: [_jsx("div", { className: "absolute -top-3 right-4 p-2 rounded-lg bg-muted border shadow-sm", children: _jsx("div", { className: cn("text-muted-foreground", iconColor && "text-primary"), style: iconColor ? { color: iconColor } : undefined, children: icon }) }), _jsxs("div", { className: "space-y-3", children: [_jsx("div", { className: "pt-2", children: _jsx("h3", { className: "text-sm font-medium text-muted-foreground", children: title }) }), _jsxs("div", { children: [_jsx("span", { className: "text-3xl font-semibold", children: value }), _jsx("span", { className: "ml-1 text-sm font-medium text-muted-foreground", children: valueUnit })] })] }), _jsx("div", { className: "mt-4 text-xs text-muted-foreground", children: tooltip })] }) }), _jsx(TooltipContent, { children: _jsx("p", { className: "text-sm", children: tooltip }) })] }) }));
-};
-export default MetricCard;
