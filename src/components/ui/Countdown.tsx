@@ -11,7 +11,7 @@ const CountdownTimer = () => {
 
   useEffect(() => {
     const calculateTimeLeft = () => {
-      const examDate = new Date('2025-06-14T20:00:00');
+      const examDate = new Date('2025-08-02T20:00:00');
       const now = new Date();
       const difference = examDate.getTime() - now.getTime();
 
