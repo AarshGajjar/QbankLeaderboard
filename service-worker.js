@@ -15,15 +15,15 @@ self.addEventListener('push', (event) => {
   const defaultData = {
     title: 'QBank Update',
     body: 'New activity recorded',
-    icon: '/MarrowLeaderboard/images/marrow.png'
+    icon: '/QbankLeaderboard/images/qbank.png'
   };
 
   const data = event.data?.json() ?? defaultData;
 
   const options = {
     ...data,
-    icon: data.icon || '/MarrowLeaderboard/images/marrow.png',
-    badge: '/MarrowLeaderboard/images/marrow.png',
+    icon: data.icon || '/QbankLeaderboard/images/qbank.png',
+    badge: '/QbankLeaderboard/images/qbank.png',
     vibrate: [200, 100, 200]
   };
 

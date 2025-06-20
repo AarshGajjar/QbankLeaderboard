@@ -1,2 +1,2 @@
-Marrow Qbank Leaderboard
-https://aarshgajjar.github.io/MarrowLeaderboard/
+Qbank Leaderboard
+https://aarshgajjar.github.io/QbankLeaderboard/

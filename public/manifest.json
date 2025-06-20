@@ -1,14 +1,14 @@
 {
-  "name": "Marrow Qbank Leaderboard",
-  "short_name": "MarrowLeaderboard",
+  "name": "Qbank Leaderboard",
+  "short_name": "QbankLeaderboard",
   "description": "Track QBank activity and progress",
-  "start_url": "/MarrowLeaderboard/",
+  "start_url": "/QbankLeaderboard/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#000000",
   "icons": [
     {
-      "src": "/MarrowLeaderboard/marrow.png",
+      "src": "/QbankLeaderboard/vite.svg",
       "sizes": "192x192",
       "type": "image/png"
     }

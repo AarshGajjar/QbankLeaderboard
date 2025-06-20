@@ -42,15 +42,15 @@ interface ExtendedInstallEvent extends ExtendableEvent {
     const defaultData = {
       title: 'QBank Update',
       body: 'New activity recorded',
-      icon: '/assets/marrow.png'
+      icon: '/assets/qbank.png'
     };
   
     const data = event.data?.json() ?? defaultData;
   
     const options: NotificationOptions = {
       ...data,
-      icon: data.icon || '/assets/marrow.png',
-      badge: '/assets/marrow.png',
+      icon: data.icon || '/assets/qbank.png',
+      badge: '/assets/qbank.png',
       vibrate: [200, 100, 200]
     };
   

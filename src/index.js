@@ -2,7 +2,7 @@
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker
-      .register('/MarrowLeaderboard/service-worker.js')
+      .register('/QbankLeaderboard/service-worker.js')
       .then(registration => {
         console.log('ServiceWorker registration successful');
       })

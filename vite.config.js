@@ -8,5 +8,5 @@ export default defineConfig({
             '@': path.resolve(__dirname, './src'),
         },
     },
-    base: '/MarrowLeaderboard/', // Set to your repository name
+    base: '/QbankLeaderboard/', // Set to your repository name
 });

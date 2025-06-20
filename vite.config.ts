@@ -12,7 +12,7 @@ export default defineConfig(({ mode }) => {
         '@': path.resolve(__dirname, './src'),
       },
     },
-    base: process.env.NODE_ENV === 'production' ? '/MarrowLeaderboard/' : '/',
+    base: process.env.NODE_ENV === 'production' ? '/QbankLeaderboard/' : '/',
     define: {
       // Explicitly define each environment variable
       'process.env.VITE_EMAILJS_SERVICE_ID': JSON.stringify(env.VITE_EMAILJS_SERVICE_ID || ''),

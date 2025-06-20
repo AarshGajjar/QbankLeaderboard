@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Clock, RefreshCw, List, Bell, BellOff } from 'lucide-react';
-import marrowIcon from '@/assets/marrow.png';
+// import qbankIcon from '@/assets/qbank.png'; // Icon removed
 import CrossPlatformNotifications from './CrossPlatformNotifications';
 import InAppNotification from './InAppNotification';
 import emailjs from '@emailjs/browser';
@@ -471,7 +471,7 @@ const ActivityLogs: React.FC<ActivityLogProps> = ({ logs, userNames, onRefresh }
         await CrossPlatformNotifications.showNotification(
           log,
           userNames,
-          marrowIcon
+          undefined // Icon removed
         );
       }
 
