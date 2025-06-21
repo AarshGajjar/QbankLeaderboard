@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react'; // Removed useMemo
 import { Card, CardTitle, CardHeader, CardContent } from '@/components/ui/card';
 import { Crown, Rocket } from 'lucide-react';
 

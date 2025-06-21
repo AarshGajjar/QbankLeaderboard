@@ -125,9 +125,10 @@ const UserStatsRadarChart: React.FC<RadarChartProps> = ({ user1, user2, isOpen, 
                     padding: '8px 12px',
                     color: 'hsl(var(--foreground))'
                   }}
-                  formatter={(value: number, name: string, props: any) => {
+                  formatter={(value: number, name: string, props: { payload: { subject: string; [key: string]: number | string; } }) => {
                     const metric = props.payload.subject;
                     if (metric === 'Accuracy') return `${value.toFixed(1)}%`;
+                    // Ensure user1.total etc. are numbers before toFixed
                     const originalValue = metric === 'Total' ? 
                       (name === user1.name ? user1.total : user2.total) :
                       metric === 'Correct' ?

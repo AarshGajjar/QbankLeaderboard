@@ -1,5 +1,5 @@
 import React from 'react';
-import imgsrc from '@/assets/qbank.png' // Icon removed
+// import imgsrc from '@/assets/qbank.png' // Icon removed - Unused import
 import CountdownTimer from './Countdown';
 
 const LeaderboardHeader = () => {

@@ -1,6 +1,12 @@
 export const DAILY_TARGET = 200;
 export const MIN_ACCURACY_TARGET = 70;
 
+export interface DailyProgressEntry {
+  date: string;
+  completed: number;
+  correct: number;
+}
+
 export const getDate = () => {
   return new Date().toISOString();
 };
@@ -9,7 +15,7 @@ const getUTCMidnight = (date: Date) => {
   return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
 };
 
-export const calculateDailyAverage = (userData: any[]) => {
+export const calculateDailyAverage = (userData: DailyProgressEntry[]) => {
   if (!userData || userData.length === 0) return 0;
 
   const today = new Date();
@@ -31,7 +37,7 @@ export const calculateDailyAverage = (userData: any[]) => {
   return Math.round(totalCompleted / nonSundayData.length);
 };
 
-export const calculateConsistencyAndStreak = (userData: any[]) => {
+export const calculateConsistencyAndStreak = (userData: DailyProgressEntry[]) => {
   if (!userData || userData.length === 0) return { consistency: 0, streak: 0, longestStreak: 0 };
 
   const today = new Date();

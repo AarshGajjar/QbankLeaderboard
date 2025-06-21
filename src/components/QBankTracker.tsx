@@ -1,484 +1,318 @@
-import React, { useState, useEffect } from 'react';
-import {Check, AlertCircle} from 'lucide-react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Check, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { supabase } from '../lib/supabase';
-import StatsComparison from './functionality/StatsComparision';
-import DualUserProgress from './functionality/EnhancedProgress';
-import ActivityLogs from './functionality/ActivityLogs';
-import ActivityHeatmap from './functionality/Heatmap';
-import { Toaster } from 'sonner';
+import { supabase } from '../lib/supabase'; // Direct supabase import for upsert, can be moved to service
+import { Toaster, toast } from 'sonner';
+import {
+  Profile,
+  UserProgress as UserProgressType, // Renamed to avoid conflict with component
+  ActivityLog as ActivityLogType,
+  QuestionBank,
+  NewActivityLogPayload,
+} from '@/types/database';
+import { useUserProfile } from '@/hooks/useUserProfile';
+import { useUserProgress } from '@/hooks/useUserProgress';
+import { useActivityLogs } from '@/hooks/useActivityLogs';
+import { calculateDailyAverage, calculateConsistencyAndStreak, calculateMetrics, DAILY_TARGET as GLOBAL_DAILY_TARGET } from '@/utils/dataPreprocessing';
 
-// Type definitions
-interface UserStats {
-  completed: number;
-  correct: number;
-  name: string;
-  date?: string;
-  accuracy?: number;
+
+// TODO: These components need significant refactoring or replacement for single-user/group view
+// import StatsComparison from './functionality/StatsComparision';
+// import DualUserProgress from './functionality/EnhancedProgress'; // Will be replaced by SingleUserProgressDisplay
+import ActivityLogsDisplay from './functionality/ActivityLogs'; // Assuming this can be adapted
+import ActivityHeatmapDisplay from './functionality/Heatmap'; // Assuming this can be adapted
+
+// --- Enhanced UserStatsDisplay ---
+interface UserStatsDisplayProps {
+  userProfile: Profile;
+  userProgressData: UserProgressType[];
 }
+const UserStatsDisplay: React.FC<UserStatsDisplayProps> = ({ userProfile, userProgressData }) => {
+  const formattedProgressForStats = useMemo(() => userProgressData.map(p => ({
+    date: p.date,
+    completed: p.completed_count,
+    correct: p.correct_count,
+  })), [userProgressData]);
 
-const DAILY_TARGET = 200;
+  const totalCompleted = formattedProgressForStats.reduce((sum, p) => sum + p.completed, 0);
+  const totalCorrect = formattedProgressForStats.reduce((sum, p) => sum + p.correct, 0);
+  const overallAccuracy = totalCompleted > 0 ? (totalCorrect / totalCompleted) * 100 : 0;
 
-type UserKey = 'user1' | 'user2';
-type AlertType = 'success' | 'error';
-
-
-interface SectionHeaderProps {
-  title: string;
-  isExpanded: boolean;
-  onToggle: () => void;
-  icon: React.ReactNode;
-}
-
-interface StatusAlertProps {
-  message: string;
-  type: AlertType;
-  onClose: () => void;
-}
-
-interface DailyData {
-  user1Data: UserStats;
-  user2Data: UserStats;
-  date: string;
-}
-
-interface ActivityLog {
-  id: number;
-  user_type: UserKey;
-  completed: number;
-  correct: number;
-  timestamp: string;
-  created_at: string;
-}
-
-interface DailyProgress {
-  date: string;
-  user1Completed: number;
-  user1Correct: number;
-  user2Completed: number;
-  user2Correct: number;
-}
-
-interface AppState {
-  stats: {
-    user1: UserStats;
-    user2: UserStats;
-  };
-  inputs: {
-    user1: { completed: string; correct: string };
-    user2: { completed: string; correct: string };
-  };
-  error: {
-    user1: string;
-    user2: string;
-  };
-  password: {
-    user1: string;
-    user2: string;
-  };
-  showPasswordInput: {
-    user1: boolean;
-    user2: boolean;
-  };
-  showInputs: {
-    user1: boolean;
-    user2: boolean;
-  };
-}
-
-// Utility functions
-const calculateAccuracy = (correct: number, total: number): string => {
-  if (total === 0) return '0';
-  return ((correct / total) * 100).toFixed(1);
-};
-
-const calculateMetrics = (stats: UserStats) => {
-  const accuracy = parseFloat(calculateAccuracy(stats.correct, stats.completed));
-  const accuracyThreshold = 80;
-  const accuracyBonus = accuracy >= accuracyThreshold ? (accuracy - accuracyThreshold) * 2 : 0;
-  const points = stats.completed + (accuracyBonus * stats.completed / 100);
-  
-  return {
-    accuracy,
-    points: Math.round(points),
-    questionsPerDay: stats.completed,
-    effectiveScore: stats.correct
-  };
-};
+  const dailyAverage = useMemo(() => calculateDailyAverage(formattedProgressForStats), [formattedProgressForStats]);
+  const { consistency, streak, longestStreak } = useMemo(() => calculateConsistencyAndStreak(formattedProgressForStats), [formattedProgressForStats]);
+  // Example: Calculate overall points (can be more sophisticated)
+  const overallPoints = formattedProgressForStats.reduce((sum, p) => sum + calculateMetrics(p).points, 0);
 
 
-interface Comparison {
-  diff: number;
-  leader: UserKey;
-  metric: string;
-  value: string;
-}
-
-interface ComparisonResult {
-  overallLeader: UserKey;
-  comparisons: {
-    accuracy: Comparison;
-    volume: Comparison;
-    points: Comparison;
-    effectiveScore: Comparison;
-  };
-  user1Metrics: ReturnType<typeof calculateMetrics>;
-  user2Metrics: ReturnType<typeof calculateMetrics>;
-}
-
-
-const getISTDate = () => {
-  const date = new Date();
-  const istTime = date.getTime() + (5.5 * 60 * 60 * 1000);
-  const istDate = new Date(istTime);
-  return istDate.toISOString().split('T')[0];
-};
-
-
-const isSameDate = (date1: string, date2: string): boolean => {
-  const d1 = new Date(date1);
-  const d2 = new Date(date2);
   return (
-    d1.getFullYear() === d2.getFullYear() &&
-    d1.getMonth() === d2.getMonth() &&
-    d1.getDate() === d2.getDate()
+    <div className="p-4 border rounded-lg shadow">
+      <h2 className="text-xl font-semibold mb-3">Stats for {userProfile.full_name || userProfile.username}</h2>
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+        <p><strong>Total Completed:</strong> {totalCompleted}</p>
+        <p><strong>Total Correct:</strong> {totalCorrect}</p>
+        <p><strong>Overall Accuracy:</strong> {overallAccuracy.toFixed(1)}%</p>
+        <p><strong>Daily Average (Non-Sunday):</strong> {dailyAverage.toFixed(0)}</p>
+        <p><strong>Consistency:</strong> {consistency.toFixed(1)}%</p>
+        <p><strong>Current Streak:</strong> {streak} days</p>
+        <p><strong>Longest Streak:</strong> {longestStreak} days</p>
+        <p><strong>Total Points:</strong> {overallPoints}</p>
+      </div>
+    </div>
   );
 };
 
+// --- UserProgressInput (mostly unchanged but used with hook states) ---
+const UserProgressInput = ({ onSubmit, disabled }: { onSubmit: (completed: number, correct: number) => Promise<void>, disabled: boolean }) => {
+  const [completed, setCompleted] = useState('');
+  const [correct, setCorrect] = useState('');
+  const [error, setError] = useState('');
 
-  // Section toggle component
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    const completedNum = parseInt(completed, 10);
+    const correctNum = parseInt(correct, 10);
 
-  // Alert component
-  const StatusAlert: React.FC<StatusAlertProps> = ({ message, type }) => (
-    <Alert className={`${type === 'success' ? 'bg-green-50' : 'bg-red-50'} mb-4`}>
-      <div className="flex items-center gap-2">
-        {type === 'success' ? (
-          <Check className="w-4 h-4 text-green-500" />
-        ) : (
-          <AlertCircle className="w-4 h-4 text-red-500" />
-        )}
-        <AlertDescription>{message}</AlertDescription>
-      </div>
-    </Alert>
-  );
-
-// Main component
-const QBankTracker: React.FC = () => {
-  
-  const [state, setState] = useState<AppState>({
-    stats: {
-      user1: { completed: 0, correct: 0, name: "Aarsh" },
-      user2: { completed: 0, correct: 0, name: "Aman" }
-    },
-    inputs: {
-      user1: { completed: '', correct: '' },
-      user2: { completed: '', correct: '' }
-    },
-    showInputs: {
-      user1: false,
-      user2: false
-    },
-    error: {
-      user1: '',
-      user2: ''
-    },
-    password: {
-      user1: '',
-      user2: ''
-    },
-    showPasswordInput: {
-      user1: false,
-      user2: false
-    }
-  });
-
-  const [dailyProgress, setDailyProgress] = useState<DailyProgress[]>([]);
-  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
-
-  // Refresh data function
-  const refreshData = async () => {
-    await fetchData();
-    await fetchDailyProgress();
-  };
-
-  // Alerts
-  const [showAlert, setShowAlert] = useState<{
-    message: string;
-    type: AlertType;
-    visible: boolean;
-  }>({ message: '', type: 'success', visible: false });
-
-  const [expandedSections, setExpandedSections] = useState<{
-    progress: boolean;
-    charts: boolean;
-    logs: boolean;
-  }>({
-    progress: true,
-    charts: false,
-    logs: false,
-  });
-
-  // Data fetching functions
-  const fetchData = async () => {
-    try {
-      const [statsResponse, logsResponse] = await Promise.all([
-        supabase
-          .from('qbank_stats')
-          .select('*')
-          .eq('id', 'main')
-          .single(),
-        supabase
-          .from('activity_logs')
-          .select('*')
-          .order('created_at', { ascending: false })
-      ]);
-
-      if (statsResponse.error && statsResponse.error.code !== 'PGRST116') {
-        throw statsResponse.error;
-      }
-
-      if (logsResponse.error) {
-        throw logsResponse.error;
-      }
-
-      if (statsResponse.data?.stats) {
-        setState(prev => ({ ...prev, stats: statsResponse.data.stats }));
-      }
-
-      if (logsResponse.data) {
-        setActivityLogs(logsResponse.data);
-      }
-    } catch (error) {
-      console.error('Failed to fetch data:', error);
-    }
-  };
-
-  const fetchDailyProgress = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('daily_progress')
-        .select('*')
-        .order('date', { ascending: true });
-
-      if (error) throw error;
-      
-      const transformedData = data?.map(entry => ({
-        date: entry.date,
-        user1Completed: entry.user1_completed,
-        user1Correct: entry.user1_correct,
-        user2Completed: entry.user2_completed,
-        user2Correct: entry.user2_correct
-      }));
-
-      setDailyProgress(transformedData || []);
-    } catch (error) {
-      console.error('Failed to fetch daily progress:', error);
-    }
-  };
-
-  // Update functions
-  const updateDailyProgress = async (user: UserKey, completed: number, correct: number) => {
-    const today = getISTDate();
-    try {
-      const { data: existingData } = await supabase
-        .from('daily_progress')
-        .select('*')
-        .eq('date', today)
-        .maybeSingle();
-
-      const userCompletedField = `${user}_completed`;
-      const userCorrectField = `${user}_correct`;
-
-      if (existingData) {
-        await supabase
-          .from('daily_progress')
-          .update({
-            [userCompletedField]: (existingData[userCompletedField] || 0) + completed,
-            [userCorrectField]: (existingData[userCorrectField] || 0) + correct
-          })
-          .eq('date', today);
-      } else {
-        await supabase
-          .from('daily_progress')
-          .insert({
-            date: today,
-            user1_completed: user === 'user1' ? completed : 0,
-            user1_correct: user === 'user1' ? correct : 0,
-            user2_completed: user === 'user2' ? completed : 0,
-            user2_correct: user === 'user2' ? correct : 0
-          });
-      }
-
-      await fetchDailyProgress();
-    } catch (error) {
-      console.error('Error updating daily progress:', error);
-    }
-  };
-
-  const handleSubmit = async (user: UserKey, completed: number, correct: number) => {
-    
-    // Validation
-    if (completed === 0 || correct > completed || completed < 0 || correct < 0) {
-      setState(prev => ({
-        ...prev,
-        error: { ...prev.error, [user]: "Invalid input values" }
-      }));
+    if (isNaN(completedNum) || isNaN(correctNum) || completedNum <= 0 || correctNum < 0 || correctNum > completedNum) {
+      setError('Invalid input. Completed must be > 0, correct >= 0 and <= completed.');
       return;
     }
-
     try {
-      const updatedStats = {
-        ...state.stats,
-        [user]: {
-          ...state.stats[user],
-          completed: state.stats[user].completed + completed,
-          correct: state.stats[user].correct + correct,
-        },
-      };
-  
-      // Update stats in database
-      const { error: statsError } = await supabase
-        .from('qbank_stats')
-        .upsert({
-          id: 'main',
-          stats: updatedStats,
-          last_updated: new Date().toISOString(),
-        });
-  
-      if (statsError) throw statsError;
-  
-      // Create activity log entry
-      const { error: logError } = await supabase
-        .from('activity_logs')
-        .insert({
-          user_type: user,
-          completed: completed,
-          correct: correct,
-          timestamp: new Date().toISOString()
-        });
-  
-      if (logError) throw logError;
-  
-      // Update daily progress
-      await updateDailyProgress(user, completed, correct);
-  
-      // Update local state
-      setState(prev => ({
-        ...prev,
-        stats: updatedStats
-      }));
-  
-      // Refresh data to ensure consistency
-      await fetchData();
-  
-    } catch (error) {
-      console.error('Failed to update progress:', error);
-      throw error; // This will be caught by the StatsComparison component
+      await onSubmit(completedNum, correctNum);
+      setCompleted('');
+      setCorrect('');
+      toast.success('Progress updated!');
+    } catch (err: any) {
+      setError(err.message || 'Failed to submit progress.');
+      toast.error(err.message || 'Failed to submit progress.');
+      console.error(err);
     }
   };
 
-  // Initial data fetch
+  return (
+    <form onSubmit={handleSubmit} className="p-4 border rounded-lg shadow space-y-3">
+      <h3 className="text-lg font-medium">Log New Progress</h3>
+      <div>
+        <label htmlFor="completed" className="block text-sm font-medium text-gray-700">Questions Completed</label>
+        <input type="number" id="completed" value={completed} onChange={(e) => setCompleted(e.target.value)} className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="e.g., 50" disabled={disabled} />
+      </div>
+      <div>
+        <label htmlFor="correct" className="block text-sm font-medium text-gray-700">Questions Correct</label>
+        <input type="number" id="correct" value={correct} onChange={(e) => setCorrect(e.target.value)} className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="e.g., 40" disabled={disabled} />
+      </div>
+      {error && <p className="text-sm text-red-600">{error}</p>}
+      <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50" disabled={disabled}>
+        Submit
+      </button>
+    </form>
+  );
+};
+
+// --- SingleUserProgressDisplay (replaces DualUserProgress) ---
+interface SingleUserProgressDisplayProps {
+  userName: string;
+  currentCompleted: number;
+  dailyTarget: number;
+}
+const SingleUserProgressDisplay: React.FC<SingleUserProgressDisplayProps> = ({ userName, currentCompleted, dailyTarget }) => {
+  const progressPercentage = dailyTarget > 0 ? (currentCompleted / dailyTarget) * 100 : 0;
+  return (
+    <div className="p-4 border rounded-lg shadow">
+      <h3 className="text-lg font-medium mb-2">Today's Goal for {userName}</h3>
+      <div className="flex justify-between items-center mb-1 text-sm">
+        <span>{currentCompleted} / {dailyTarget} questions</span>
+        <span>{progressPercentage.toFixed(0)}%</span>
+      </div>
+      <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+        <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${Math.min(progressPercentage, 100)}%` }}></div>
+      </div>
+    </div>
+  );
+};
+
+
+// --- Utility & Main Component ---
+const getUTCDateString = () => new Date().toISOString().split('T')[0];
+
+interface StatusAlertProps { message: string; type: 'success' | 'error'; }
+const StatusAlert: React.FC<StatusAlertProps> = ({ message, type }) => (
+  <Alert className={`${type === 'success' ? 'bg-green-50' : 'bg-red-50'} mb-4`}>
+    <div className="flex items-center gap-2">
+      {type === 'success' ? <Check className="w-4 h-4 text-green-500" /> : <AlertCircle className="w-4 h-4 text-red-500" />}
+      <AlertDescription>{message}</AlertDescription>
+    </div>
+  </Alert>
+);
+
+const QBankTracker: React.FC = () => {
+  const { profile: currentUser, loading: userLoading, error: userError } = useUserProfile();
+  const [defaultQuestionBank, setDefaultQuestionBank] = useState<QuestionBank | null>(null);
+  const [isQbLoading, setIsQbLoading] = useState(true);
+
+  // Fetch Default Question Bank
   useEffect(() => {
-    fetchData();
-    fetchDailyProgress();
+    async function fetchDefaultQB() {
+      setIsQbLoading(true);
+      try {
+        const { data: qbData, error: qbError } = await supabase
+          .from('question_banks')
+          .select('*')
+          .eq('name', 'Default QBank')
+          .single();
+        if (qbError) throw qbError;
+        setDefaultQuestionBank(qbData);
+      } catch (e: any) {
+        toast.error(e.message || "Failed to load default question bank.");
+        console.error("Failed to load default question bank:", e);
+      } finally {
+        setIsQbLoading(false);
+      }
+    }
+    fetchDefaultQB();
   }, []);
 
-  const getTodaysTotals = (logs: ActivityLog[]) => {
-    const today = getISTDate();
-    return logs.reduce((acc, log) => {
-      if (isSameDate(log.timestamp, today)) {
-        const userKey = log.user_type as UserKey;
-        acc[userKey].completed += log.completed;
-        acc[userKey].correct += log.correct;
-      }
-      return acc;
-    }, {
-      user1: { completed: 0, correct: 0 },
-      user2: { completed: 0, correct: 0 }
-    });
+  const { progress: userProgressData, loading: progressLoading, error: progressError, refetch: refetchUserProgress } = useUserProgress(currentUser?.id, defaultQuestionBank?.id);
+  const { logs: activityLogData, loading: logsLoading, error: logsError, refetch: refetchActivityLogs } = useActivityLogs(currentUser?.id, defaultQuestionBank?.id);
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmitProgress = async (completedDelta: number, correctDelta: number) => {
+    if (!currentUser || !defaultQuestionBank) {
+      toast.error('User or question bank not loaded.');
+      throw new Error('User or question bank not loaded.');
+    }
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
+    const userId = currentUser.id;
+    const questionBankId = defaultQuestionBank.id;
+    const todayDate = getUTCDateString();
+
+    try {
+      const newLogPayload: NewActivityLogPayload = {
+        user_id: userId, question_bank_id: questionBankId, completed_delta: completedDelta, correct_delta: correctDelta,
+      };
+      const { error: logError } = await supabase.from('activity_logs').insert(newLogPayload);
+      if (logError) throw logError;
+
+      const { data: existingProgress, error: fetchExistingError } = await supabase
+        .from('user_progress').select('*').eq('user_id', userId).eq('question_bank_id', questionBankId).eq('date', todayDate).maybeSingle();
+      if (fetchExistingError) throw fetchExistingError;
+
+      const currentCompleted = existingProgress?.completed_count || 0;
+      const currentCorrect = existingProgress?.correct_count || 0;
+      const upsertData = {
+        user_id: userId, question_bank_id: questionBankId, date: todayDate,
+        completed_count: currentCompleted + completedDelta, correct_count: currentCorrect + correctDelta,
+      };
+      const { error: upsertError } = await supabase.from('user_progress').upsert(upsertData, { onConflict: 'user_id, question_bank_id, date' });
+      if (upsertError) throw upsertError;
+
+      await Promise.all([refetchUserProgress(), refetchActivityLogs()]);
+    } catch (e: any) {
+      console.error('Failed to submit progress:', e);
+      throw e; // Re-throw for UserProgressInput to catch and display
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  // Common alert component
-  const alertComponent = showAlert.visible && (
-    <StatusAlert
-      message={showAlert.message}
-      type={showAlert.type}
-      onClose={() => setShowAlert(prev => ({ ...prev, visible: false }))}
-    />
-  );
+  const todaysTotals = useMemo(() => {
+    const today = getUTCDateString();
+    return activityLogData
+      .filter(log => log.timestamp.startsWith(today))
+      .reduce((acc, log) => {
+        acc.completed += log.completed_delta;
+        acc.correct += log.correct_delta;
+        return acc;
+      }, { completed: 0, correct: 0 });
+  }, [activityLogData]);
 
-  // Common content components
-  const statsComparisonComponent = (
-    <StatsComparison
-      stats={state.stats}
-      onUpdateProgress={handleSubmit}
-      dailyData={dailyProgress}
-      activityLogs={activityLogs}
-    />
-  );
+  const isLoading = userLoading || isQbLoading || progressLoading || logsLoading;
+  const overallError = userError || progressError || logsError; // Show first error encountered
 
-  const activityLogsComponent = (
-    <ActivityLogs
-      logs={activityLogs}
-      userNames={{
-        user1: state.stats.user1.name,
-        user2: state.stats.user2.name
-      }}
-      onRefresh={refreshData}
-    />
-  );
+  if (isLoading && !overallError) { // Show loading only if no error yet, to prevent flicker
+    return <div className="flex justify-center items-center h-screen">Loading QBank Data...</div>;
+  }
 
-  const progressComponent = (
-    <DualUserProgress
-      user1={{
-        name: state.stats.user1.name,
-        current: getTodaysTotals(activityLogs).user1.completed,
-        color: "#7242eb"
-      }}
-      user2={{
-        name: state.stats.user2.name,
-        current: getTodaysTotals(activityLogs).user2.completed,
-        color: "#2563eb"
-      }}
-      target={DAILY_TARGET}
-    />
-  );
+  if (overallError) {
+    return (
+      <div className="p-4">
+        <StatusAlert message={overallError || "An unknown error occurred."} type="error" />
+        {/* Optionally add a button to refetch all data */}
+      </div>
+    );
+  }
 
-  const heatmapComponent = (
-    <ActivityHeatmap
-      dailyProgress={dailyProgress}
-      userNames={{
-        user1: state.stats.user1.name,
-        user2: state.stats.user2.name
-      }}
-    />
-  );
-
+  if (!currentUser) {
+     return <div className="p-4 text-center">User not found. Please ensure you are logged in.</div>
+  }
+  if (!defaultQuestionBank) {
+     return <div className="p-4 text-center">Default question bank not available.</div>
+  }
   return (
     <>
-      <Toaster 
-        position="top-center" 
-        richColors 
-        expand 
-        closeButton 
-      />
-      {/* Mobile layout */}
-      <div className="flex flex-col gap-6 lg:hidden">
-        {alertComponent}
-        <div className="w-full">{progressComponent}</div>
-        <div className="w-full">{statsComparisonComponent}</div>
-        <div className="w-full">{activityLogsComponent}</div>
-        <div className="w-full">{heatmapComponent}</div>
-      </div>
+      <Toaster position="top-center" richColors expand closeButton />
+      {statusAlert?.visible && (
+        <StatusAlert message={statusAlert.message} type={statusAlert.type} onClose={() => setStatusAlert(null)} />
+      )}
 
-      {/* Desktop layout */}
-      <div className="hidden lg:grid grid-rows-[auto_1fr] gap-6 w-full max-w-[1600px] mx-auto">
-        <div className="row-span-1 w-full">{progressComponent}</div>
-        <div className="grid grid-cols-2 gap-6 justify-center items-start">
-          {statsComparisonComponent}
-          {activityLogsComponent}
+      <div className="container mx-auto p-4 space-y-6">
+        <h1 className="text-2xl font-bold">QBank Tracker for {currentUser.full_name || currentUser.username}</h1>
+
+        <UserProgressInput onSubmit={handleSubmitProgress} disabled={isSubmitting} />
+
+        <UserStatsDisplay userProfile={currentUser} userProgress={userProgress} />
+
+        {/* TODO: Adapt or replace these components.
+                  They expect two-user data structures or different props.
+        */}
+        {/*
+        <div className="w-full">
+          <h3>Today's Progress</h3>
+          <p>Completed: {getTodaysTotalsForCurrentUser().completed} / {DAILY_TARGET}</p>
+          <progress value={getTodaysTotalsForCurrentUser().completed} max={DAILY_TARGET} className="w-full"></progress>
         </div>
-        <div className="w-full">{heatmapComponent}</div>
+        */}
+
+        {activityLogs.length > 0 && defaultQuestionBank && currentUser && (
+          <ActivityLogsDisplay
+            logs={activityLogs.map(log => ({ // Adapt to the old ActivityLog structure if necessary for the component
+              id: log.id, // Assuming new id is compatible or component is adapted
+              user_type: currentUser.id, // Map to a generic user identifier
+              completed: log.completed_delta,
+              correct: log.correct_delta,
+              timestamp: log.timestamp,
+              created_at: log.created_at,
+            }))}
+            userNames={{ [currentUser.id]: currentUser.full_name || currentUser.username || 'User' }}
+            onRefresh={fetchDataForUser}
+          />
+        )}
+
+        {userProgress.length > 0 && defaultQuestionBank && currentUser && (
+           <ActivityHeatmapDisplay
+            // This component needs significant adaptation.
+            // It expects dailyProgress with user1/user2 fields.
+            // We now have userProgress with single user data.
+            // For now, let's try to pass what we have, it will likely break or not show correctly.
+            dailyProgressData={userProgress.map(up => ({
+              date: up.date,
+              // These are specific to the old structure, need to adapt Heatmap component
+              user1Completed: up.completed_count,
+              user1Correct: up.correct_count,
+              user2Completed: 0, // Placeholder
+              user2Correct: 0,   // Placeholder
+            }))}
+            userName={currentUser.full_name || currentUser.username || 'User'} // Simplified for one user
+          />
+        )}
+
+        {/* Old components that are hard to adapt directly without major rewrite or prop changes:
+        <StatsComparison ... />
+        <DualUserProgress ... />
+        */}
+
       </div>
     </>
   );

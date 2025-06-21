@@ -3,20 +3,20 @@
 
 // Define interfaces for our custom events
 interface ExtendedInstallEvent extends ExtendableEvent {
-    waitUntil(fn: Promise<any>): void;
+    waitUntil(fn: Promise<void>): void;
   }
   
   interface ExtendedActivateEvent extends ExtendableEvent {
-    waitUntil(fn: Promise<any>): void;
+    waitUntil(fn: Promise<void>): void;
   }
   
   interface ExtendedPushEvent extends PushEvent {
-      waitUntil(fn: Promise<any>): void;
+      waitUntil(fn: Promise<void>): void;
       data: PushMessageData | null;
     }
   
   interface ExtendedNotificationEvent extends NotificationEvent {
-    waitUntil(fn: Promise<any>): void;
+    waitUntil(fn: Promise<void>): void;
     notification: Notification;
   }
   

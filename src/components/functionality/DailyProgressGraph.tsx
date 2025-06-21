@@ -7,9 +7,7 @@ import { Flame, Calendar, Brain } from 'lucide-react';
 import MetricCard from '@/components/ui/MetricCard';
 import TimeAnalysis from '@/components/functionality/TimeAnalysis';
 import { 
-  DAILY_TARGET, 
-  MIN_ACCURACY_TARGET,
-  getDate,
+  getDate, // DAILY_TARGET and MIN_ACCURACY_TARGET removed as they are used by imported functions internally
   calculateConsistencyAndStreak,
   calculateDailyAverage 
 } from '@/utils/dataPreprocessing';
@@ -78,19 +76,22 @@ const DailyProgressGraph: React.FC<ProgressDashboardProps> = ({
   const filteredData = useMemo(() => {
     if (!Array.isArray(dailyData) || dailyData.length === 0) return [];
     return getFilteredDataByRange(dailyData);
-  }, [dailyData, dateRange]);
+  }, [dailyData, dateRange, getFilteredDataByRange]); // Added getFilteredDataByRange
 
   const stats = useMemo(() => {
-    if (!Array.isArray(dailyData)) return { 
+    if (!Array.isArray(dailyData)) return { // dailyData check here is good
       currentStreak: 0, 
       dailyAverage: 0, 
       todayProgress: 0,
       studyConsistency: 0
     };
 
+    // Use dailyData directly for mapping if filteredData is derived from it.
+    // Or ensure userData is derived from filteredData correctly.
+    // The current `filteredData` is what should be used for stats calculation based on dateRange.
     const userData = filteredData.map(d => 
       selectedUser === 'user1' ? d?.user1Data : d?.user2Data
-    ).filter(Boolean);
+    ).filter(Boolean) as UserProgress[]; // Add type assertion
 
     const { streak: currentStreak, consistency: studyConsistency } = calculateConsistencyAndStreak(userData);
     const dailyAverage = calculateDailyAverage(userData);
@@ -104,10 +105,11 @@ const DailyProgressGraph: React.FC<ProgressDashboardProps> = ({
       todayProgress, 
       studyConsistency 
     };
-  }, [filteredData, selectedUser, dailyData]);
+  }, [filteredData, selectedUser, dailyData]); // Added dailyData as per original lint error
 
   const processedData = useMemo(() => {
-    if (!Array.isArray(dailyData)) return [];
+    // This should use filteredData, not dailyData directly, to respect dateRange.
+    if (!Array.isArray(filteredData) || filteredData.length === 0) return [];
     
     return filteredData
       .filter(data => data !== null && data !== undefined)
@@ -126,16 +128,18 @@ const DailyProgressGraph: React.FC<ProgressDashboardProps> = ({
       })
       .filter((day): day is NonNullable<typeof day> => day !== null)
       .filter(day => day.completed > 0);
-  }, [filteredData, selectedUser]);
+  }, [filteredData, selectedUser]); // Correctly depends on filteredData
 
 const trendData = useMemo(() => {
   const windowSize = 7;
   
-  // Get filtered data first
-  const filteredSortedData = getFilteredDataByRange([...dailyData])
+  // getFilteredDataByRange is already applied to dailyData to get filteredData.
+  // Re-filtering here might be redundant if filteredData is already sorted or can be sorted.
+  // For safety and to match original intent of filtering for trends:
+  const filteredSortedData = getFilteredDataByRange([...dailyData]) // Use dailyData for full range before trend specific filtering
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   
-  // Calculate cumulative total from filtered data
+  // Calculate cumulative total from this potentially broader filtered data for trends
   let runningTotal = 0;
   const cumulativeTotals = new Map<string, number>();
   
@@ -183,7 +187,7 @@ const trendData = useMemo(() => {
         totalQuestions: data.cumulativeTotal
       };
     });
-}, [dailyData, selectedUser, dateRange]);
+}, [dailyData, selectedUser, dateRange, getFilteredDataByRange]); // Added getFilteredDataByRange
 
   return (
     <div className="w-full">
@@ -394,12 +398,4 @@ const trendData = useMemo(() => {
 
 export default DailyProgressGraph;
 
-function calculateGoalProgress(data: DailyData) {
-  const selectedData = data.user1Data || data.user2Data;
-  return {
-    completed: selectedData?.completed || 0,
-    accuracy: selectedData?.completed > 0 
-      ? Math.round((selectedData.correct / selectedData.completed) * 100)
-      : 0
-  };
-}
+// Removed unused calculateGoalProgress function

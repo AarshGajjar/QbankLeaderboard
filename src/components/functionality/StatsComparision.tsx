@@ -28,10 +28,28 @@ interface Stats {
   user2: UserStats;
 }
 
+// Define more specific types for legacy props
+interface LegacyDailyDataEntry {
+  date: string;
+  user1Completed?: number;
+  user1Correct?: number;
+  user2Completed?: number;
+  user2Correct?: number;
+}
+
+interface LegacyActivityLogEntry {
+  id: number | string; // ID could be number or string from different sources
+  user_type: UserKey; // 'user1' | 'user2'
+  completed: number;
+  correct: number;
+  timestamp: string;
+  created_at: string;
+}
+
 const StatsComparison: React.FC<{
   stats: Stats;
-  dailyData: any[];
-  activityLogs: any[];
+  dailyData: LegacyDailyDataEntry[];
+  activityLogs: LegacyActivityLogEntry[];
   onUpdateProgress: (user: UserKey, completed: number, correct: number) => Promise<void>;
 }> = ({ stats, dailyData, activityLogs, onUpdateProgress }) => {
   const [activeUser, setActiveUser] = useState<UserKey | null>(null);

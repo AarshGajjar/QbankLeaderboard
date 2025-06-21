@@ -2,14 +2,14 @@ import React, { useMemo, useState } from 'react';
 import { 
   ResponsiveContainer, 
   ComposedChart, 
-  ScatterChart, 
-  Scatter, 
+  // ScatterChart, // Unused
+  // Scatter, // Unused
   Bar, 
   Line, 
   XAxis, 
   YAxis, 
-  ZAxis,
-  Cell,
+  // ZAxis, // Unused
+  // Cell, // Unused
   Tooltip, 
   CartesianGrid, 
   ReferenceLine, 
@@ -27,13 +27,13 @@ interface ActivityLog {
 interface TimeAnalysisProps {
   activityLogs: ActivityLog[];
   selectedUser: string;
-  dateRange?: string;
+  // dateRange?: string; // Removed unused prop
 }
 
 const TimeAnalysis: React.FC<TimeAnalysisProps> = ({ 
   activityLogs, 
   selectedUser, 
-  dateRange = 'all' 
+  // dateRange = 'all' // Removed unused prop
 }) => {
   const [viewType, setViewType] = useState<'chart' | 'clock' | '3d'>('chart');
 
@@ -42,7 +42,7 @@ const TimeAnalysis: React.FC<TimeAnalysisProps> = ({
     averageAccuracy, 
     peakPeriod, 
     lowPeriod, 
-    scatterData,
+    // scatterData, // Unused, plot3DData is used
     plot3DData 
   } = useMemo(() => {
     // Filter logs based on selected user
@@ -119,10 +119,10 @@ const TimeAnalysis: React.FC<TimeAnalysisProps> = ({
       averageAccuracy: average,
       peakPeriod: peak,
       lowPeriod: low,
-      scatterData: scatterPlot3DData,
+      // scatterData: scatterPlot3DData, // Removed
       plot3DData: scatterPlot3DData
     };
-  }, [activityLogs, selectedUser, dateRange]);
+  }, [activityLogs, selectedUser]); // Removed dateRange from dependency array
 
   const render3DPlot = () => {
     const x = plot3DData.map(d => d.x);
@@ -202,7 +202,15 @@ const TimeAnalysis: React.FC<TimeAnalysisProps> = ({
     );
   };
 
-  const getClockIndicators = (data: any[]) => {
+interface ProcessedInterval {
+  hour: string;
+  accuracy: number;
+  attempts: number;
+  totalQuestions: number;
+  intervalValue: number;
+}
+
+const getClockIndicators = (data: ProcessedInterval[]) => {
     return Array.from({ length: 24 }, (_, hour) => {
       const interval = data.find(d => 
         d.intervalValue <= hour && 
