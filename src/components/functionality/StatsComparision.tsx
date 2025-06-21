@@ -13,7 +13,6 @@ import {
   calculateConsistencyAndStreak 
 } from '@/utils/dataPreprocessing';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import {EmailNotificationService} from './ActivityLogs';
 
 type UserKey = 'user1' | 'user2';
 
@@ -43,7 +42,6 @@ const StatsComparison: React.FC<{
   const [showProgress, setShowProgress] = useState(false);
   const [selectedProgressUser, setSelectedProgressUser] = useState<UserKey>('user1');
   const [isRadarChartOpen, setIsRadarChartOpen] = useState(false);
-  const [emailService] = useState(() => new EmailNotificationService());
   const user1Metrics = calculateMetrics(stats.user1);
   const user2Metrics = calculateMetrics(stats.user2);
   const leader: UserKey = user1Metrics.points > user2Metrics.points ? 'user1' : 'user2';
@@ -143,18 +141,6 @@ const StatsComparison: React.FC<{
       const todaysTotals = getTodaysTotals();
       todaysTotals[activeUser] += completed; // Add the new submission to today's total
   
-      // Send notification
-      try {
-        const message = emailService.formatActivityMessage(newLog, {
-          user1: stats.user1.name,
-          user2: stats.user2.name
-        }, todaysTotals);
-        
-        await emailService.sendEmail(message);
-      } catch (error) {
-        console.error('Failed to send notification:', error);
-        toast.error('Progress updated but notification failed to send');
-      }
   
       toast.success(`${completed} questions added for ${stats[activeUser].name}`);
       
