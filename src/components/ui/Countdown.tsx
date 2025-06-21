@@ -11,7 +11,7 @@ const CountdownTimer = () => {
 
   useEffect(() => {
     const calculateTimeLeft = () => {
-      const examDate = new Date('2025-06-14T20:00:00');
+      const examDate = new Date('2025-08-02T20:00:00');
       const now = new Date();
       const difference = examDate.getTime() - now.getTime();
 
@@ -83,7 +83,7 @@ const CountdownTimer = () => {
         <div className="flex items-center gap-2">
           <Timer className="text-purple-600" size={20} />
           <span className="font-semibold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-            INICET Countdown
+            NEET Countdown
           </span>
         </div>
         <div className="flex gap-3">
@@ -106,7 +106,7 @@ const CountdownTimer = () => {
         <div className="flex items-center gap-1">
           <Timer className="text-purple-600" size={16} />
           <span className="font-semibold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-            INICET Countdown
+            NEET Countdown
           </span>
         </div>
         <div className="flex gap-2">

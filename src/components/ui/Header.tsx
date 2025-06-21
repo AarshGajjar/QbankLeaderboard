@@ -1,5 +1,5 @@
 import React from 'react';
-import imgsrc from '@/assets/marrow.png'
+import imgsrc from '@/assets/qbank.png' // Icon removed
 import CountdownTimer from './Countdown';
 
 const LeaderboardHeader = () => {
@@ -16,20 +16,13 @@ const LeaderboardHeader = () => {
           <div className="relative flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-6 px-4 sm:px-8 py-6">
             {/* Center section */}
             <div className="flex items-center gap-6 flex-grow justify-center">
-              {/* Logo container with enhanced hover animation */}
-              <a 
-                href="https://www.marrow.com/qbank" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="relative group/logo z-10"
-              >
+              {/* QBank icon placeholder */}
+              <div className="relative group/logo z-10">
                 <div className="absolute inset-0 bg-gradient-to-r from-purple-500/30 to-blue-500/30 rounded-full blur-xl transition-all duration-300 group-hover/logo:scale-110 pointer-events-none" />
-                <img 
-                  src={imgsrc}
-                  alt="Marrow Logo" 
-                  className="relative w-12 h-12 rounded-full shadow-lg transition-all duration-300 group-hover/logo:expand-6 group-hover/logo:scale-110"
-                />
-              </a>
+                <div className="relative w-12 h-12 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 shadow-lg transition-all duration-300 group-hover/logo:scale-110 flex items-center justify-center">
+                  <span className="text-white font-bold text-lg">Q</span>
+                </div>
+              </div>
               
               {/* Title with enhanced animation */}
               <div className="space-y-1">

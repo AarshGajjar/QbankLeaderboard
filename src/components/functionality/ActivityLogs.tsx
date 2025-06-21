@@ -4,10 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Clock, RefreshCw, List, Bell, BellOff } from 'lucide-react';
-import marrowIcon from '@/assets/marrow.png';
-import CrossPlatformNotifications from './CrossPlatformNotifications';
-import InAppNotification from './InAppNotification';
-import emailjs from '@emailjs/browser';
+// import qbankIcon from '@/assets/qbank.png'; // Icon removed
+// import CrossPlatformNotifications from './CrossPlatformNotifications'; // Removed
+// import InAppNotification from './InAppNotification'; // Removed as the component is deleted
+// import emailjs from '@emailjs/browser'; // Removed
 
 // Core interfaces defining the structure of activity logs and component props
 interface ActivityLog {
@@ -86,163 +86,8 @@ const getCurrentDate = () => {
   return istTime.toISOString().split('T')[0];
 };
 
-// Email Notifications
-export class EmailNotificationService {
-  private lastMessageTime: number = 0;
-  private minDelayBetweenMessages: number = 1000;
-  
-  private readonly EMAIL_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID;
-  private readonly EMAIL_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
-  private readonly EMAIL_PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
-  private readonly RECIPIENT_EMAILS = ['aarshgajjar16@gmail.com', 'charaniyaaman3@gmail.com'];
-  
-  constructor() {
-    emailjs.init(this.EMAIL_PUBLIC_KEY);
-  }
-  
-  private async rateLimitedSend(emailData: any): Promise<void> {
-    const now = Date.now();
-    const timeToWait = Math.max(0, this.minDelayBetweenMessages - (now - this.lastMessageTime));
-    
-    if (timeToWait > 0) {
-      await new Promise(resolve => setTimeout(resolve, timeToWait));
-    }
-    
-    this.lastMessageTime = Date.now();
-    await emailjs.send(this.EMAIL_SERVICE_ID, this.EMAIL_TEMPLATE_ID, emailData);
-  }
-  
-  formatActivityMessage(
-    log: ActivityLog, 
-    userNames: { user1: string; user2: string },
-    todaysTotals: { user1: number; user2: number }
-  ): string {
-    const userName = userNames[log.user_type];
-    const accuracy = calculateAccuracy(log.correct, log.completed);
-    const time = new Date(log.timestamp).toLocaleTimeString('en-IN', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    });
-    
-    const leader = todaysTotals.user1 > todaysTotals.user2 ? userNames.user1 : userNames.user2;
-    const difference = Math.abs(todaysTotals.user1 - todaysTotals.user2);
-    const accuracyNum = parseFloat(accuracy.toString());
-    
-    // Compact latest activity summary
-    const activitySummary = `
-      <div style="margin-bottom: 15px; color: #ffffff;">
-        <span style="font-size: 20px; font-weight: 500;">${userName}</span>
-        <div style="margin-top: 8px; line-height: 1.4;">
-          Completed <span style="font-weight: 500;">${log.completed}</span> questions with 
-          <span style="font-weight: 500; color: ${accuracyNum >= 70 ? '#a5f3fc' : '#fecaca'};">${accuracy}%</span> accuracy at ${time}
-        </div>
-      </div>
-    `;
-    
-    // Combined progress section
-    const progressSection = `
-      <div style="margin-bottom: 20px; background-color: #f9fafb; border-radius: 8px; padding: 15px;">
-        <strong style="color: #4f46e5; display: block; margin-bottom: 10px; font-size: 16px;">Today's Progress</strong>
-        
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-          <!-- User 1 -->
-          <div style="padding: 12px; background-color: #faf5ff; border-radius: 8px; text-align: center;">
-            <div style="color: #9333ea; font-weight: 600; margin-bottom: 5px;">${userNames.user1}</div>
-            <div style="font-size: 22px; font-weight: 700;">${todaysTotals.user1}</div>
-          </div>
-          
-          <!-- User 2 -->
-          <div style="padding: 12px; background-color: #eff6ff; border-radius: 8px; text-align: center;">
-            <div style="color: #3b82f6; font-weight: 600; margin-bottom: 5px;">${userNames.user2}</div>
-            <div style="font-size: 22px; font-weight: 700;">${todaysTotals.user2}</div>
-          </div>
-        </div>
-        
-        <!-- Lead status -->
-        <div style="margin-top: 15px; text-align: center; padding: 10px; background-color: #f8fafc; border-radius: 6px;">
-          <span style="color: ${leader === userNames.user1 ? '#9333ea' : '#3b82f6'}; font-weight: 600;">${leader}</span> 
-          is leading by <span style="font-weight: 600;">${difference}</span> questions
-        </div>
-        
-        <!-- Progress bars -->
-        <div style="margin-top: 15px;">
-          <!-- User 1 Progress -->
-          <div style="margin-bottom: 10px;">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
-              <div style="font-size: 14px; font-weight: 500; color: #9333ea;">${userNames.user1}</div>
-              <div style="font-size: 14px; color: #6b7280;">${todaysTotals.user1}</div>
-            </div>
-            <div style="height: 8px; background-color: #e5e7eb; border-radius: 4px; overflow: hidden;">
-              <div style="height: 100%; width: ${Math.min(100, Math.round((todaysTotals.user1 / Math.max(todaysTotals.user1, todaysTotals.user2)) * 100))}%; 
-                    background-color: #9333ea; border-radius: 4px;"></div>
-            </div>
-          </div>
-          
-          <!-- User 2 Progress -->
-          <div>
-            <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
-              <div style="font-size: 14px; font-weight: 500; color: #3b82f6;">${userNames.user2}</div>
-              <div style="font-size: 14px; color: #6b7280;">${todaysTotals.user2}</div>
-            </div>
-            <div style="height: 8px; background-color: #e5e7eb; border-radius: 4px; overflow: hidden;">
-              <div style="height: 100%; width: ${Math.min(100, Math.round((todaysTotals.user2 / Math.max(todaysTotals.user1, todaysTotals.user2)) * 100))}%; 
-                    background-color: #3b82f6; border-radius: 4px;"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-    
-    // Random motivational quote generator
-    const quotes = [
-      "Success is the sum of small efforts repeated day in and day out.",
-      "The only way to learn is to practice.",
-      "The expert in anything was once a beginner.",
-      "Consistency is the key to achieving results.",
-      "Small daily improvements add up to big results."
-    ];
-    
-    const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
-    
-    const motivationSection = `
-      <div style="background-color: #faf5ff; border-radius: 8px; padding: 15px; text-align: center;">
-        <p style="color: #6d28d9; font-style: italic; margin: 0; font-size: 16px;">
-          "${randomQuote}"
-        </p>
-      </div>
-    `;
-    
-    return `
-      ${activitySummary}
-      ${progressSection}
-      ${motivationSection}
-    `;
-  }
-  
-  async sendEmail(message: string): Promise<void> {
-    let successCount = 0;
-    
-    for (const recipientEmail of this.RECIPIENT_EMAILS) {
-      try {
-        await this.rateLimitedSend({
-          to_email: recipientEmail,
-          message_html: message,
-          subject: `Qbank Activity Update`,
-        });
-        
-        successCount++;
-        console.log(`Email sent successfully to ${recipientEmail}`);
-      } catch (error) {
-        console.error(`Failed to send email to ${recipientEmail}:`, error);
-      }
-    }
-    
-    if (successCount === 0) {
-      throw new Error('Failed to send email to any recipient');
-    }
-  }
-}
+// Email Notifications (Removed)
+// export class EmailNotificationService { ... } // Entire class removed
 
 const ActivityLogs: React.FC<ActivityLogProps> = ({ logs, userNames, onRefresh }) => {
   // State management for various UI controls and features
@@ -262,9 +107,9 @@ const ActivityLogs: React.FC<ActivityLogProps> = ({ logs, userNames, onRefresh }
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const [lastRefreshAttempt, setLastRefreshAttempt] = useState<number>(Date.now());
   const MINIMUM_REFRESH_INTERVAL = 5000; // 5 seconds minimum between refreshes
-  const [notificationSystem, setNotificationSystem] = useState<any>(null);
-  const [emailService] = useState(() => new EmailNotificationService());
-  const [emailError, setEmailError] = useState<string | null>(null);
+  // const [notificationSystem, setNotificationSystem] = useState<any>(null); // Removed
+  // const [emailService] = useState(() => new EmailNotificationService()); // Removed
+  // const [emailError, setEmailError] = useState<string | null>(null); // Removed
 
   /**
    * Enhanced auto-refresh mechanism with error handling and rate limiting
@@ -443,46 +288,43 @@ const ActivityLogs: React.FC<ActivityLogProps> = ({ logs, userNames, onRefresh }
    * Notification system implementation
    * Handles permission requests and notification display
    */
-  const initializeNotifications = async () => {
-    const system = await CrossPlatformNotifications.init();
-    setNotificationSystem(system);
-    setNotifications(prev => ({ ...prev, enabled: system.supported }));
-  };
+  // const initializeNotifications = async () => { // Removed
+  //   // const system = await CrossPlatformNotifications.init(); // Removed
+  //   // setNotificationSystem(system); // Removed
+  //   // setNotifications(prev => ({ ...prev, enabled: system.supported })); // Removed
+  // }; // Removed
 
   // Add useEffect to request notification permission on mount
-  useEffect(() => {
-    initializeNotifications();
-  }, []);
+  // useEffect(() => { // Removed
+  //   // initializeNotifications(); // Removed
+  // }, []); // Removed
 
   const toggleNotifications = async () => {
-    if (!notifications.enabled) {
-      await initializeNotifications();
-    } else {
-      setNotifications(prev => ({ ...prev, enabled: false }));
-    }
+    // Simplified: just toggle the enabled state. Permission was browser-level.
+    setNotifications(prev => ({ ...prev, enabled: !prev.enabled }));
   };
 
-  const showNotification = useCallback(async (log: ActivityLog) => {
-    if (!notifications.enabled) return;
+  // const showNotification = useCallback(async (log: ActivityLog) => { // Removed
+  //   if (!notifications.enabled) return; // Removed
 
-    try {
-      // Show browser notification
-      if (notificationSystem?.supported) {
-        await CrossPlatformNotifications.showNotification(
-          log,
-          userNames,
-          marrowIcon
-        );
-      }
+  //   try { // Removed
+  //     // Show browser notification // Removed
+  //     // if (notificationSystem?.supported) { // Removed
+  //     //   await CrossPlatformNotifications.showNotification( // Removed
+  //     //     log, // Removed
+  //     //     userNames, // Removed
+  //     //     undefined // Icon removed // Removed
+  //     //   ); // Removed
+  //     // } // Removed
 
-    } catch (error) {
-      console.error('Notification error:', error);
-      setEmailError('Failed to send Email notification');
+  //   } catch (error) { // Removed
+  //     console.error('Notification error:', error); // Removed
+  //     setEmailError('Failed to send Email notification'); // Removed
       
-      // Clear error after 5 seconds
-      setTimeout(() => setEmailError(null), 5000);
-    }
-  }, [notifications.enabled, userNames, notificationSystem, emailService, dailyTotals]);
+  //     // Clear error after 5 seconds // Removed
+  //     setTimeout(() => setEmailError(null), 5000); // Removed
+  //   } // Removed
+  // }, [notifications.enabled, userNames, notificationSystem, emailService, dailyTotals]); // Removed
 
   /**
    * Watches for new logs and triggers notifications
@@ -494,10 +336,11 @@ const ActivityLogs: React.FC<ActivityLogProps> = ({ logs, userNames, onRefresh }
     const newLogs = logs.filter(log => log.id > notifications.lastSeenLogId);
     if (newLogs.length > 0) {
       // Show notification for each new log
-      newLogs.forEach(log => {
-        showNotification(log);
-      });
+      // newLogs.forEach(log => { // Removed
+      //   showNotification(log); // Removed
+      // }); // Removed
       // Update lastSeenLogId to the most recent log ID
+      // We still want to track seen logs, even if not showing notifications from this component
       setNotifications(prev => ({ ...prev, lastSeenLogId: Math.max(...newLogs.map(log => log.id)) }));
     }
 
@@ -509,7 +352,7 @@ const ActivityLogs: React.FC<ActivityLogProps> = ({ logs, userNames, onRefresh }
     }, 30000); // Check every 30 seconds when page is hidden
 
     return () => clearInterval(interval);
-  }, [logs, notifications.enabled, notifications.lastSeenLogId, showNotification, onRefresh]);
+  }, [logs, notifications.enabled, notifications.lastSeenLogId, onRefresh]); // Removed showNotification from dependencies
 
   // Initialize lastSeenLogId more effectively
   useEffect(() => {
@@ -544,7 +387,7 @@ const ActivityLogs: React.FC<ActivityLogProps> = ({ logs, userNames, onRefresh }
   // UI Component rendering
   return (
     <Card className="w-full shadow-lg rounded-lg bg-gradient-to-br from-white/80 via-white/90 to-white/80 dark:from-slate-900/80 dark:via-slate-900/90 dark:to-slate-900/80 backdrop-blur-sm border border-white/20 dark:border-slate-800/20">
-      <InAppNotification />
+      {/* <InAppNotification /> */} {/* Removed as the component is deleted */}
       {/* Card Header with title and controls */}
       <CardHeader className="border-b p-4 bg-gradient-to-r from-purple-600/10 to-blue-600/10 dark:from-purple-900/20 dark:to-blue-900/20">
         <div className="flex items-center justify-between">
@@ -580,9 +423,9 @@ const ActivityLogs: React.FC<ActivityLogProps> = ({ logs, userNames, onRefresh }
             </Button>
           </div>
         </div>
-        {(refreshError || emailError) && (
+        {refreshError && (
           <div className="mt-2 text-sm text-red-500 dark:text-red-400">
-            {refreshError || emailError}
+            {refreshError}
           </div>
         )}
       </CardHeader>
